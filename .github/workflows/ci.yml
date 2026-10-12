@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install from lockfile
+        run: uv sync --extra dev --frozen
+      - name: Ruff
+        run: uv run ruff check .
+      - name: Black
+        run: uv run black --check .
+      - name: Tests
+        run: uv run pytest -q
+      - name: Notebook hygiene
+        run: uv run python scripts/check_notebooks.py
+      - name: Secret and path scan
+        run: |
+          if grep -rInE --exclude-dir=.git --exclude-dir=.venv --exclude=uv.lock --exclude=ci.yml \
+            '(/home/[a-z]+/|pdrangeid|BEGIN (RSA|PRIVATE) KEY|sk-[A-Za-z0-9]{20,})' .; then
+            echo "Found a path or secret-like string"; exit 1
+          fi

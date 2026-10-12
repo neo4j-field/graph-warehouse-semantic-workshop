@@ -1,0 +1,54 @@
+[project]
+name = "graph-warehouse-semantic-workshop"
+version = "0.1.0"
+description = "Hands-on workshop: add a Neo4j semantic layer to your data warehouse with neocarta"
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "neocarta[cli,snowflake,mcp]",
+    "python-dotenv>=1.0",
+    "typer>=0.12",
+    "rich>=13.0",
+    "neo4j>=5.20",
+    "snowflake-connector-python>=3.12.0",
+    "cryptography>=42.0",
+    "langchain>=1.2.7",
+    "langchain-litellm>=0.2.4",
+    "langchain-mcp-adapters>=0.2.1",
+    "langgraph>=1.0.7",
+    "ipykernel>=6.29",
+    "jupyterlab>=4.0",
+    "jupyter-core>=5.9.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.5", "black>=24.0", "nbformat>=5.9"]
+
+[project.scripts]
+workshop-agent = "workshop_agent.main:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["workshop_agent"]
+
+# neocarta is pinned to the release the labs were validated against (ADR-0003).
+# To hack on neocarta locally instead, see docs/customizing_for_your_environment.md.
+[tool.uv.sources]
+neocarta = { git = "https://github.com/neo4j-labs/neocarta", rev = "ba6bf7945bf9c60640c664a03ccc26d0013996bf" }
+
+[tool.black]
+line-length = 88
+
+[tool.ruff]
+extend-exclude = ["*.ipynb"]  # teaching notebooks favour readability over line length
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

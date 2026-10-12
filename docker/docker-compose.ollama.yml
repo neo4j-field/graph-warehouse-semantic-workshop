@@ -1,0 +1,43 @@
+# Local LLM for the workshop: Ollama serving a tool-calling chat model and an
+# embedding model. CPU-only by default; add docker-compose.ollama.gpu.yml for NVIDIA.
+#
+#   docker compose -f docker/docker-compose.ollama.yml up -d
+#   docker compose -f docker/docker-compose.ollama.yml \
+#                  -f docker/docker-compose.ollama.gpu.yml up -d     # NVIDIA GPU
+#
+# Then in .env: OLLAMA_API_BASE=http://localhost:11434
+#               AGENT_MODEL=ollama/qwen2.5:7b
+#               EMBEDDING_MODEL=ollama/nomic-embed-text
+name: semantic-workshop-ollama
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # One-shot: pulls the workshop models into the shared volume, then exits.
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ollama pull "${OLLAMA_CHAT_MODEL:-qwen2.5:7b}" &&
+        ollama pull "${OLLAMA_EMBED_MODEL:-nomic-embed-text}"
+    restart: "no"
+
+volumes:
+  ollama_models:

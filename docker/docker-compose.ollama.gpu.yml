@@ -1,0 +1,11 @@
+# Overlay: give the ollama service access to NVIDIA GPUs
+# (requires the NVIDIA Container Toolkit on the host).
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
