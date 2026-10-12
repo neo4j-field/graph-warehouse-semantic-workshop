@@ -52,6 +52,7 @@ neocarta is installed automatically at a pinned version; you do not need to clon
 | `01_load_metadata_into_graph.ipynb` | Lab 01: ingest Snowflake metadata (physical layer), verify, semantic search |
 | `02_load_semantic_layer.ipynb` | Lab 02: ingest an OSI semantic model; join paths, synonyms, metrics |
 | `03_build_graph_stub_and_schema.ipynb` | Lab 03: supply chain graph seeded from TPC-H keys, schema registry, bridge to tables and columns |
+| `04_agentic_workflow.ipynb` | Lab 04: an LLM agent walks the supply chain graph, reads the schema bridge and runs the SQL itself; read-only, with transcript checks |
 | `datasets/tpch_semantic_model.yaml` | Hand-authored OSI semantic model for `SNOWFLAKE_SAMPLE_DATA.TPCH_SF1` |
 | `workshop_agent/` | Snowflake Text2SQL agent (`workshop-agent` CLI) |
 | `docker/` | Optional local LLM (Ollama) compose files |

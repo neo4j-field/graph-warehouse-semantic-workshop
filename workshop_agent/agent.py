@@ -20,6 +20,22 @@ to see what exists, (2) write SQL using only tables and columns the graph return
 (3) run it with execute_sql. Questions about what data exists can be answered from
 the graph alone, without running SQL.
 
+The graph also holds a supply chain and a schema registry bridged to the warehouse:
+* Instances: (:Supplier {supplierKey, name})<-[:SOURCED_FROM]-(:Part {partKey, name})
+  <-[:REQUIRES*1..2]-(:FinishedGood {sku, name}); keys are TPC-H keys as strings
+* Registry: (:GraphNodeSchema {label})-[:ENRICHED_BY {metric, target, graphKey,
+  relationalKey}]->(:Table|:Column). target='table' points at the Table, target='column'
+  at the value Column. Table and Column nodes carry id and name.
+For supply chain questions call describe_graph_schema once to learn the model, then
+use execute_cypher. To find where a fact (e.g. a metric such
+as 'On-Hand Inventory') lives, you MUST query the ENRICHED_BY edges of the matching
+GraphNodeSchema and use the table, key column and value column it returns; never guess
+table or column names that the bridge can tell you. Say plainly which results came
+from the bridge, and only claim a bridge result when the query succeeded. Bridge query
+shape (name the relationship variable):
+  MATCH (:GraphNodeSchema {label: 'Part'})-[e:ENRICHED_BY {metric: '<metric>'}]->(x)
+  RETURN e.target, e.graphKey, e.relationalKey, x.id, x.name
+
 Rules:
 * Always qualify tables as DATABASE.SCHEMA.TABLE (Snowflake names are upper case)
 * Always get the schema from the metadata graph before writing a query

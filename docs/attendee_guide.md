@@ -26,6 +26,7 @@ During the workshop we demo with ready-made assets to keep the pace up. Everythi
 | 01 | `01_load_metadata_into_graph.ipynb` | Load Snowflake metadata into Neo4j (physical layer) |
 | 02 | `02_load_semantic_layer.ipynb` | Add business meaning, joins and metrics from an OSI YAML file |
 | 03 | `03_build_graph_stub_and_schema.ipynb` | Build a small supply chain graph and bridge it to the warehouse metadata |
+| 04 | `04_agentic_workflow.ipynb` | Let an LLM agent answer a supplier-disruption question using the graph and the bridge |
 
 ---
 
@@ -493,7 +494,7 @@ uv run workshop-agent "Which tables hold customer orders?"   # one question
 uv run workshop-agent --debug "..."                     # full LiteLLM / MCP logging
 ```
 
-What it does: starts `neocarta-mcp` (graph metadata tools), adds an `execute_sql` tool for Snowflake, and runs a LangGraph agent on `AGENT_MODEL`. It reads the same `.env` (Snowflake auth, `AGENT_MODEL`, `OLLAMA_API_BASE`, `CORPORATE_GATEWAY_HEADERS`).
+What it does: starts `neocarta-mcp` (graph metadata tools), adds an `execute_sql` tool for Snowflake and read-only `execute_cypher` / `describe_graph_schema` tools for the supply chain graph, and runs a LangGraph agent on `AGENT_MODEL`. It reads the same `.env` (Snowflake auth, `AGENT_MODEL`, `OLLAMA_API_BASE`, `CORPORATE_GATEWAY_HEADERS`).
 
 - **About `execute_sql`:** it is a small custom tool we wrote for convenience and simplicity (single read-only statement, `SELECT`/`WITH`/`SHOW`/`DESCRIBE`, results capped at `AGENT_ROW_LIMIT` rows, default 50). In production you would more likely use a **Snowflake-managed MCP server**, which gives more robust Snowflake support (governance, query handling, Cortex features). Also grant the agent's role only the access it needs; the keyword check is not a security boundary.
 - **Model quality:** a 7B local model can follow the tool loop but is unreliable: it may skip the graph tools, guess table names or invent results. If answers look wrong, check the `🌿` tool-call lines, or use a hosted or larger tool-calling model via `AGENT_MODEL`.
@@ -534,6 +535,20 @@ RETURN m.name, m.description, e.expression;
 ### 7.7 Build the supply chain graph
 
 Notebook `03_build_graph_stub_and_schema.ipynb` (run after 01 and 02) adds a small manufacturing graph (`FinishedGood` → `Assembly` → `Part` → `Supplier`) seeded with real TPC-H part and supplier keys, registers the graph's own schema as nodes (`GraphDatabase`, `GraphNodeSchema`, `GraphRelSchema`) and links those schema nodes to the `PART`, `PARTSUPP` and `SUPPLIER` tables and columns (`CORRELATES_TO`, `ENRICHED_BY`) and to business terms (`STANDARDIZES`). It ends by answering "which products does a supplier problem affect, and what stock exists?" by walking the graph and then running SQL built from the bridge. Run with `uv run jupyter lab 03_build_graph_stub_and_schema.ipynb`; it is idempotent.
+
+### 7.8 Let an agent walk the golden thread
+
+Notebook `04_agentic_workflow.ipynb` (run after 03) repeats the supplier-disruption question from 03, but an LLM agent answers it from one prompt: "Supplier#000000002 reports a delay: which finished goods are affected, and how much inventory do we hold of the affected parts?" The agent has to (1) traverse `Supplier <- Part <- FinishedGood` in Neo4j, (2) look up where *On-Hand Inventory* lives through the `ENRICHED_BY` bridge on the `Part` schema node (without being told `PARTSUPP` or `PS_AVAILQTY`), and (3) run the SQL against Snowflake.
+
+```sh
+uv run jupyter lab 04_agentic_workflow.ipynb
+```
+
+- **Read-only:** it writes nothing. Neo4j is queried in read transactions and Snowflake only accepts `SELECT`/`WITH`/`SHOW`/`DESCRIBE`.
+- **Bring your own LLM:** the model is `AGENT_MODEL`, routed by LiteLLM (public API, Ollama or a gateway). The notebook ships with cleared outputs; the reference run used Claude Haiku 4.5.
+- **Checks:** the notebook computes the expected answer itself, then checks the transcript, so a lucky guess of the TPC-H table names does not pass. Expect 3/3 on a capable hosted model. A small local model may fail the bridge check by writing Cypher with unnamed relationships; the tool-call lines (`🌿`) show where it went wrong.
+- **Two readings of "inventory":** the notebook reports all stock of the affected parts (142,442) and the delayed supplier's own stock (26,012). The question asks for the former.
+- **Tooling note:** the Neocarta MCP server only exposes catalog tools, so `workshop_agent/tools.py` adds `describe_graph_schema` and `execute_cypher`. In production, use the official Neo4j Cypher MCP server and a Snowflake-managed MCP server instead.
 
 ## 8. Going further (proof-of-value ideas)
 
