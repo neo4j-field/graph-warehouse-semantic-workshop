@@ -14,9 +14,9 @@ Send attendees this pre-work at least a week ahead. Account setup is where most 
 
 Your own checklist:
 
-- [ ] Run labs 00-03 yourself on the day before, on a fresh Aura instance, with the same dependency pin.
+- [ ] Run labs 00-04 yourself on the day before, on a fresh Aura instance, with the same dependency pin.
 - [ ] Confirm `SNOWFLAKE_SAMPLE_DATA` exists in the trial accounts you recommend.
-- [ ] Prepare a **pre-run Neo4j database** with labs 01-03 loaded (see "No source database available" below).
+- [ ] Prepare a **pre-run Neo4j database** with labs 01-03 loaded (lab 04 runs live against it) (see "No source database available" below).
 - [ ] Decide how attendees get an LLM key (their own, a shared workshop key, or Ollama) and who revokes shared keys.
 
 ## Suggested agenda (adjust after your own test run)
@@ -28,6 +28,7 @@ Your own checklist:
 | Lab 01 | Load warehouse metadata into Neo4j | Show the graph in Neo4j Browser; optional embeddings |
 | Lab 02 | Semantic layer (OSI): joins, synonyms, metrics | Key insight: TPC-H has no FKs, the YAML supplies join paths |
 | Lab 03 | Supply chain graph and schema bridge | Graph plus warehouse: traverse the graph, then run SQL built from the bridge |
+| Lab 04 | An agent walks the golden thread | Show the 🌿 tool calls: it reads the `ENRICHED_BY` bridge before writing SQL; the notebook's C1-C3 checks prove it. Needs a capable tool-calling model; small local models may fail C2 |
 | Agent demo | `workshop-agent` answering a business question | Smaller local models are unreliable; use a hosted tool-calling model for demos |
 | Wrap-up | Adapting to your own warehouse | Point at the customization guide |
 
@@ -50,7 +51,7 @@ wrong account identifier format, `UV_ENV_FILE` not set for the `neocarta` CLI.
 ## Maintaining this repo
 
 - **neocarta pin:** `pyproject.toml` pins neocarta to a commit (ADR-0003). To bump it, change the `rev`,
-  run `uv lock`, rerun labs 00-03 on a clean database, then update the links in `docs/` that mention the
+  run `uv lock`, rerun labs 00-04 on a clean database, then update the links in `docs/` that mention the
   old commit and add a `CHANGELOG.md` entry.
 - **Clean-run test:** use a fresh clone, a new venv, and a fresh Snowflake trial and Aura Free instance, following
   only the attendee guide. Log every undocumented step as an issue and fix the guide.

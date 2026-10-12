@@ -53,6 +53,7 @@ class Settings:
     gateway_headers: dict[str, str] = field(default_factory=dict)
     row_limit: int = DEFAULT_ROW_LIMIT
     snowflake: dict[str, Any] = field(default_factory=dict)
+    neo4j: dict[str, Any] = field(default_factory=dict)
     mcp_env: dict[str, str] = field(default_factory=dict)
 
     @property
@@ -96,6 +97,15 @@ def _snowflake_kwargs(env: Any) -> dict[str, Any]:
     return {k: v for k, v in kw.items() if v is not None}
 
 
+def _neo4j_kwargs(env: Any) -> dict[str, Any]:
+    """Build connection settings for the read-only Cypher tool."""
+    return {
+        "uri": env.get("NEO4J_URI"),
+        "auth": (env.get("NEO4J_USERNAME"), env.get("NEO4J_PASSWORD")),
+        "database": env.get("NEO4J_DATABASE", "neo4j"),
+    }
+
+
 def load_settings(env_file: Path | None = None) -> Settings:
     """Load ``.env`` once and resolve settings from the environment."""
     load_dotenv(env_file or Path.cwd() / ".env")
@@ -105,6 +115,7 @@ def load_settings(env_file: Path | None = None) -> Settings:
         gateway_headers=parse_gateway_headers(env.get("CORPORATE_GATEWAY_HEADERS")),
         row_limit=int(env.get("AGENT_ROW_LIMIT", DEFAULT_ROW_LIMIT)),
         snowflake=_snowflake_kwargs(env),
+        neo4j=_neo4j_kwargs(env),
         mcp_env={
             k: v
             for k, v in env.items()

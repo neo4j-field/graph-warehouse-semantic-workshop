@@ -15,7 +15,7 @@ from rich.markdown import Markdown
 
 from .agent import create_text2sql_agent
 from .config import Settings, load_settings
-from .tools import make_execute_sql_tool
+from .tools import make_execute_sql_tool, make_graph_tools
 
 app = typer.Typer(help="Snowflake Text2SQL agent for the neocarta workshop.")
 console = Console()
@@ -43,6 +43,7 @@ async def _chat(settings: Settings, question: str | None) -> None:
     )
     tools = list(await client.get_tools(server_name="sql_metadata_graph"))
     tools.append(make_execute_sql_tool(settings.snowflake, settings.row_limit))
+    tools.extend(make_graph_tools(settings.neo4j, settings.row_limit))
     console.print(f"🔍 Tools: {', '.join(t.name for t in tools)}")
     agent = create_text2sql_agent(tools, settings)
     config = {"configurable": {"thread_id": "workshop"}}
@@ -80,7 +81,7 @@ def chat(
     """Chat with the agent (interactive, or one-shot when QUESTION is given)."""
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
     if not debug:  # keep third-party chatter out of the workshop transcript
-        for noisy in ("LiteLLM", "litellm", "snowflake", "httpx", "mcp"):
+        for noisy in ("LiteLLM", "litellm", "snowflake", "httpx", "mcp", "neo4j"):
             logging.getLogger(noisy).setLevel(logging.WARNING)
     settings = load_settings()
     asyncio.run(_chat(settings, question))

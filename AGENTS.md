@@ -6,7 +6,7 @@ Read it at the start of every session. `CLAUDE.md` only imports this file.
 ## What this repo is
 
 A hands-on workshop, and a GitHub template, for adding a Neo4j semantic layer to an existing data warehouse
-with [neocarta](https://github.com/neo4j-labs/neocarta). Labs 00-03 are Jupyter notebooks at the repo root;
+with [neocarta](https://github.com/neo4j-labs/neocarta). Labs 00-04 are Jupyter notebooks at the repo root;
 `workshop_agent/` is a Snowflake Text2SQL agent; `datasets/` holds the OSI semantic model. See
 [ARCHITECTURE.md](ARCHITECTURE.md) for data flow and components.
 
@@ -93,7 +93,7 @@ add a Review Log entry and refresh Next Steps and Technical Debt below, and comm
 ## Notes
 
 ### Next Steps
-- Run the full clean-environment test of labs 00-03 and fix any drift (see `docs/facilitator_guide.md`).
+- Run the full clean-environment test of labs 00-04 and fix any drift (see `docs/facilitator_guide.md`).
 - Point `workshop-agent` at the semantic layer: ask for "net revenue by region" and confirm it uses the
   `net_revenue` metric and the `REFERENCES` join path.
 - Consider a larger or hosted default model; a 7B local model skips graph tools and can hallucinate results.
@@ -111,7 +111,7 @@ add a Review Log entry and refresh Next Steps and Technical Debt below, and comm
 
 ### Review Log
 **2026-10-12 — Initial public import**
-Extracted from the private development workspace: labs 00-03, the OSI TPC-H semantic model, the Snowflake
+Extracted from the private development workspace: labs 00-04, the OSI TPC-H semantic model, the Snowflake
 Text2SQL agent, Ollama compose files, attendee guide, ADR-0001/0002 and a pinned neocarta dependency (ADR-0003).
 Rewrote AGENTS.md for public use and added facilitator, customization and new-workshop guides. Notebook
 installation no longer needs a sibling neocarta clone. Session: 2026-10-12-public-repo-initial-import.

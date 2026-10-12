@@ -54,3 +54,32 @@ def test_format_rows():
     out = format_rows(["A", "B"], [(1, 2)], truncated=True)
     assert "| A | B |" in out and "truncated" in out
     assert format_rows(["A"], [], False) == "Query returned no rows."
+
+
+@pytest.mark.parametrize(
+    "cypher",
+    [
+        "MATCH (s:Supplier)<-[:SOURCED_FROM]-(p:Part) RETURN p.partKey LIMIT 5",
+        "MATCH (n) WHERE n.name = 'CREATE me' RETURN n.createdDatetime",
+    ],
+)
+def test_cypher_read_only_allows(cypher):
+    from workshop_agent.tools import check_read_only_cypher
+
+    assert check_read_only_cypher(cypher) is None
+
+
+@pytest.mark.parametrize(
+    "cypher",
+    [
+        "CREATE (n:X)",
+        "MATCH (n) DETACH DELETE n",
+        "MATCH (n) SET n.x = 1 RETURN n",
+        "MERGE (n:X {id: 1})",
+        "CALL apoc.periodic.iterate('a','b',{})",
+    ],
+)
+def test_cypher_read_only_blocks(cypher):
+    from workshop_agent.tools import check_read_only_cypher
+
+    assert check_read_only_cypher(cypher) is not None
