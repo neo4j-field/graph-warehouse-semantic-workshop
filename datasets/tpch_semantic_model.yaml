@@ -1,0 +1,496 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/open-semantic-interchange/OSI/main/core-spec/osi-schema.json
+#
+# TPC-H business semantic layer for SNOWFLAKE_SAMPLE_DATA.TPCH_SF1  (workshop module 02)
+# ======================================================================================
+# Hand-authored in the Open Semantic Interchange (OSI) 0.1.1 format and loaded with:
+#
+#     neocarta osi ingest --spec-source datasets/tpch_semantic_model.yaml
+#
+# How this file maps onto the physical layer loaded by module 01
+# --------------------------------------------------------------
+# * Every dataset `source` is a 3-part DATABASE.SCHEMA.TABLE name. neocarta builds node ids
+#   from that name (lower-cased), exactly as `neocarta snowflake schema` did, so each dataset
+#   MERGEs onto the EXISTING (:Table) node instead of creating a second copy.
+# * Dataset names and field names are deliberately the real UPPER-CASE Snowflake names, so a
+#   node's `name` does not change and SQL written from the graph keeps working.
+# * The physical nodes are enriched, not replaced: the loader only sets a property when it first
+#   creates a node, so existing Table/Column names and descriptions from module 01 are kept. The
+#   business meaning arrives as NEW nodes linked to them (Domain, Metric, Join, Expression,
+#   Aspect, BusinessTerm) and as the OsiTable/OsiColumn labels on the existing nodes. On an empty
+#   graph the descriptions below are written onto the Table/Column nodes as well.
+# * `ai_context.synonyms` become (:BusinessTerm) nodes tagged onto tables, columns and metrics.
+# * `relationships` become (:Join) nodes plus (Column)-[:REFERENCES]->(Column) edges. TPCH declares
+#   no foreign keys in Snowflake, so this file is what supplies the join paths.
+# * `metrics` become (:Metric) nodes with their SQL kept as (:Expression) nodes.
+#
+# Source of truth for names: the TPC-H specification (Snowflake's TPCH_SF1 sample follows it).
+
+version: "0.1.1"
+
+semantic_model:
+  - name: tpch_semantic_model
+    description: Business view of the TPC-H wholesale supply data set - customers place orders made of line items, each line item supplies a part from a supplier, and customers and suppliers sit in nations and regions.
+    ai_context:
+      instructions: "Use this model to answer sales and supply-chain questions over TPC-H. Revenue always means net revenue from LINEITEM: L_EXTENDEDPRICE * (1 - L_DISCOUNT). Join LINEITEM to ORDERS on the order key, ORDERS to CUSTOMER on the customer key, and CUSTOMER or SUPPLIER to NATION and REGION for geography. Date analysis pivots on O_ORDERDATE (when ordered) and L_SHIPDATE (when shipped). Always qualify tables as SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.<TABLE>."
+
+    datasets:
+
+    # ============================================================
+    # Geography: REGION -> NATION
+    # ============================================================
+
+      - name: REGION
+        source: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.REGION
+        primary_key: [R_REGIONKEY]
+        description: "Sales and supply regions of the world. The top of the geography hierarchy (5 rows)."
+        ai_context:
+          synonyms: ["areas", "territories", "continents"]
+        fields:
+          - name: R_REGIONKEY
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: R_REGIONKEY }] }
+            description: "Unique identifier of the region."
+          - name: R_NAME
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: R_NAME }] }
+            description: "Name of the region (AFRICA, AMERICA, ASIA, EUROPE, MIDDLE EAST)."
+            ai_context:
+              synonyms: ["region name"]
+          - name: R_COMMENT
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: R_COMMENT }] }
+            description: "Free-text remark about the region."
+
+      - name: NATION
+        source: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.NATION
+        primary_key: [N_NATIONKEY]
+        description: "Countries in which customers and suppliers are located. Each nation belongs to exactly one region (25 rows)."
+        ai_context:
+          synonyms: ["countries", "country"]
+        fields:
+          - name: N_NATIONKEY
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: N_NATIONKEY }] }
+            description: "Unique identifier of the nation."
+          - name: N_NAME
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: N_NAME }] }
+            description: "Name of the nation, such as GERMANY or BRAZIL."
+            ai_context:
+              synonyms: ["country name"]
+          - name: N_REGIONKEY
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: N_REGIONKEY }] }
+            description: "The region this nation belongs to."
+          - name: N_COMMENT
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: N_COMMENT }] }
+            description: "Free-text remark about the nation."
+
+    # ============================================================
+    # Parties: CUSTOMER and SUPPLIER
+    # ============================================================
+
+      - name: CUSTOMER
+        source: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.CUSTOMER
+        primary_key: [C_CUSTKEY]
+        description: "Companies that buy from us. One row per customer account (150,000 rows at scale factor 1)."
+        ai_context:
+          synonyms: ["clients", "buyers", "accounts"]
+        fields:
+          - name: C_CUSTKEY
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: C_CUSTKEY }] }
+            description: "Unique identifier of the customer account."
+            ai_context:
+              synonyms: ["customer id"]
+          - name: C_NAME
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: C_NAME }] }
+            description: "Customer account name (Customer#000000001 style)."
+            ai_context:
+              synonyms: ["customer name"]
+          - name: C_ADDRESS
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: C_ADDRESS }] }
+            description: "Street address of the customer."
+          - name: C_NATIONKEY
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: C_NATIONKEY }] }
+            description: "The nation where the customer is located."
+          - name: C_PHONE
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: C_PHONE }] }
+            description: "Customer contact phone number; the prefix encodes the nation."
+          - name: C_ACCTBAL
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: C_ACCTBAL }] }
+            description: "Current account balance of the customer in USD; negative means the customer owes money."
+            ai_context:
+              synonyms: ["account balance", "customer balance"]
+          - name: C_MKTSEGMENT
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: C_MKTSEGMENT }] }
+            description: "Market segment the customer belongs to (AUTOMOBILE, BUILDING, FURNITURE, HOUSEHOLD, MACHINERY), used for segment-level sales analysis."
+            ai_context:
+              synonyms: ["market segment", "customer segment"]
+          - name: C_COMMENT
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: C_COMMENT }] }
+            description: "Free-text remark about the customer."
+
+      - name: SUPPLIER
+        source: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.SUPPLIER
+        primary_key: [S_SUPPKEY]
+        description: "Companies that supply parts to us. One row per supplier (10,000 rows at scale factor 1)."
+        ai_context:
+          synonyms: ["vendors", "providers"]
+        fields:
+          - name: S_SUPPKEY
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: S_SUPPKEY }] }
+            description: "Unique identifier of the supplier."
+            ai_context:
+              synonyms: ["supplier id"]
+          - name: S_NAME
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: S_NAME }] }
+            description: "Supplier name (Supplier#000000001 style)."
+            ai_context:
+              synonyms: ["supplier name", "vendor name"]
+          - name: S_ADDRESS
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: S_ADDRESS }] }
+            description: "Street address of the supplier."
+          - name: S_NATIONKEY
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: S_NATIONKEY }] }
+            description: "The nation where the supplier is located."
+          - name: S_PHONE
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: S_PHONE }] }
+            description: "Supplier contact phone number; the prefix encodes the nation."
+          - name: S_ACCTBAL
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: S_ACCTBAL }] }
+            description: "Current account balance with the supplier in USD; negative means we owe the supplier."
+            ai_context:
+              synonyms: ["supplier balance"]
+          - name: S_COMMENT
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: S_COMMENT }] }
+            description: "Free-text remark about the supplier."
+
+    # ============================================================
+    # Catalog: PART and PARTSUPP
+    # ============================================================
+
+      - name: PART
+        source: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.PART
+        primary_key: [P_PARTKEY]
+        description: "Products we can sell - the part catalog. One row per part (200,000 rows at scale factor 1)."
+        ai_context:
+          synonyms: ["products", "items", "catalog"]
+        fields:
+          - name: P_PARTKEY
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: P_PARTKEY }] }
+            description: "Unique identifier of the part."
+            ai_context:
+              synonyms: ["part id", "product id"]
+          - name: P_NAME
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: P_NAME }] }
+            description: "Descriptive name of the part, built from colour words."
+            ai_context:
+              synonyms: ["part name", "product name"]
+          - name: P_MFGR
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: P_MFGR }] }
+            description: "Manufacturer of the part (Manufacturer#1 to #5)."
+            ai_context:
+              synonyms: ["manufacturer"]
+          - name: P_BRAND
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: P_BRAND }] }
+            description: "Brand of the part (Brand#11 to #55), a finer grouping inside the manufacturer."
+            ai_context:
+              synonyms: ["brand"]
+          - name: P_TYPE
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: P_TYPE }] }
+            description: "Product type, combining finish, plating and metal (for example ECONOMY ANODIZED STEEL)."
+            ai_context:
+              synonyms: ["product type"]
+          - name: P_SIZE
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: P_SIZE }] }
+            description: "Size of the part (1 to 50)."
+          - name: P_CONTAINER
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: P_CONTAINER }] }
+            description: "Container the part ships in (for example SM CASE, LG BOX)."
+          - name: P_RETAILPRICE
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: P_RETAILPRICE }] }
+            description: "List (retail) price of one unit of the part in USD, before any discount."
+            ai_context:
+              synonyms: ["list price", "retail price"]
+          - name: P_COMMENT
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: P_COMMENT }] }
+            description: "Free-text remark about the part."
+
+      - name: PARTSUPP
+        source: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.PARTSUPP
+        primary_key: [PS_PARTKEY, PS_SUPPKEY]
+        description: "Which supplier can supply which part, at what cost and with how much stock. One row per part-supplier pair (800,000 rows at scale factor 1)."
+        ai_context:
+          synonyms: ["supplier catalog", "sourcing", "inventory"]
+        fields:
+          - name: PS_PARTKEY
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: PS_PARTKEY }] }
+            description: "The part being supplied. Part of the composite key."
+          - name: PS_SUPPKEY
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: PS_SUPPKEY }] }
+            description: "The supplier offering the part. Part of the composite key."
+          - name: PS_AVAILQTY
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: PS_AVAILQTY }] }
+            description: "Quantity of the part this supplier currently has available."
+            ai_context:
+              synonyms: ["available quantity", "stock on hand"]
+          - name: PS_SUPPLYCOST
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: PS_SUPPLYCOST }] }
+            description: "Cost in USD for us to buy one unit of the part from this supplier."
+            ai_context:
+              synonyms: ["supply cost", "unit cost", "wholesale cost"]
+          - name: PS_COMMENT
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: PS_COMMENT }] }
+            description: "Free-text remark about the part-supplier relationship."
+
+    # ============================================================
+    # Sales: ORDERS and LINEITEM
+    # ============================================================
+
+      - name: ORDERS
+        source: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.ORDERS
+        primary_key: [O_ORDERKEY]
+        description: "Customer purchase orders. One row per order header (1,500,000 rows at scale factor 1); the individual items are in LINEITEM."
+        ai_context:
+          synonyms: ["purchases", "sales orders", "purchase orders"]
+        fields:
+          - name: O_ORDERKEY
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: O_ORDERKEY }] }
+            description: "Unique identifier of the order."
+            ai_context:
+              synonyms: ["order id", "order number"]
+          - name: O_CUSTKEY
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: O_CUSTKEY }] }
+            description: "The customer who placed the order."
+          - name: O_ORDERSTATUS
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: O_ORDERSTATUS }] }
+            description: "Fulfilment status of the whole order: F (fulfilled), O (open), P (partially fulfilled)."
+            ai_context:
+              synonyms: ["order status"]
+          - name: O_TOTALPRICE
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: O_TOTALPRICE }] }
+            description: "Total price of the order in USD as billed, including tax and after discounts."
+            ai_context:
+              synonyms: ["order total", "order value", "order amount"]
+          - name: O_ORDERDATE
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: O_ORDERDATE }] }
+            description: "Date the order was placed."
+            ai_context:
+              synonyms: ["order date", "purchase date"]
+            dimension: { is_time: true }
+          - name: O_ORDERPRIORITY
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: O_ORDERPRIORITY }] }
+            description: "Urgency the customer gave the order (1-URGENT, 2-HIGH, 3-MEDIUM, 4-NOT SPECIFIED, 5-LOW)."
+            ai_context:
+              synonyms: ["order priority"]
+          - name: O_CLERK
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: O_CLERK }] }
+            description: "Sales clerk who recorded the order."
+          - name: O_SHIPPRIORITY
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: O_SHIPPRIORITY }] }
+            description: "Shipping priority class for the order (0 for standard)."
+          - name: O_COMMENT
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: O_COMMENT }] }
+            description: "Free-text remark about the order."
+
+      - name: LINEITEM
+        source: SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.LINEITEM
+        primary_key: [L_ORDERKEY, L_LINENUMBER]
+        description: "Individual items on an order: one row per part, supplier and quantity (6,001,215 rows at scale factor 1). The main fact table - revenue, quantities and shipping all come from here."
+        ai_context:
+          synonyms: ["order lines", "line items", "order details", "shipments"]
+        fields:
+          - name: L_ORDERKEY
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: L_ORDERKEY }] }
+            description: "The order this line belongs to. Part of the composite key."
+          - name: L_PARTKEY
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: L_PARTKEY }] }
+            description: "The part sold on this line. Together with L_SUPPKEY it identifies the PARTSUPP row."
+          - name: L_SUPPKEY
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: L_SUPPKEY }] }
+            description: "The supplier that fulfils this line. Together with L_PARTKEY it identifies the PARTSUPP row."
+          - name: L_LINENUMBER
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: L_LINENUMBER }] }
+            description: "Position of the line within its order (1, 2, 3...). Part of the composite key."
+          - name: L_QUANTITY
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: L_QUANTITY }] }
+            description: "Number of units of the part on this line."
+            ai_context:
+              synonyms: ["quantity", "units sold"]
+          - name: L_EXTENDEDPRICE
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: L_EXTENDEDPRICE }] }
+            description: "Gross price of the line in USD: quantity multiplied by the part's retail price, before discount and tax."
+            ai_context:
+              synonyms: ["gross price", "gross amount", "line amount"]
+          - name: L_DISCOUNT
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: L_DISCOUNT }] }
+            description: "Discount granted on the line as a fraction (0.05 means 5%)."
+            ai_context:
+              synonyms: ["discount rate"]
+          - name: L_TAX
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: L_TAX }] }
+            description: "Sales tax charged on the line as a fraction (0.08 means 8%)."
+            ai_context:
+              synonyms: ["tax rate"]
+          - name: L_RETURNFLAG
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: L_RETURNFLAG }] }
+            description: "Whether the item was returned: R (returned), A (accepted), N (not yet shipped or not applicable)."
+            ai_context:
+              synonyms: ["return flag"]
+          - name: L_LINESTATUS
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: L_LINESTATUS }] }
+            description: "Fulfilment status of the line: F (shipped) or O (open)."
+            ai_context:
+              synonyms: ["line status"]
+          - name: L_SHIPDATE
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: L_SHIPDATE }] }
+            description: "Date the item was shipped."
+            ai_context:
+              synonyms: ["ship date", "shipping date", "dispatch date"]
+            dimension: { is_time: true }
+          - name: L_COMMITDATE
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: L_COMMITDATE }] }
+            description: "Date the item was promised to the customer."
+            ai_context:
+              synonyms: ["commit date", "promised date"]
+            dimension: { is_time: true }
+          - name: L_RECEIPTDATE
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: L_RECEIPTDATE }] }
+            description: "Date the customer received the item."
+            ai_context:
+              synonyms: ["receipt date", "delivery date"]
+            dimension: { is_time: true }
+          - name: L_SHIPINSTRUCT
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: L_SHIPINSTRUCT }] }
+            description: "Delivery instruction (DELIVER IN PERSON, COLLECT COD, NONE, TAKE BACK RETURN)."
+          - name: L_SHIPMODE
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: L_SHIPMODE }] }
+            description: "Transport method used (AIR, FOB, MAIL, RAIL, REG AIR, SHIP, TRUCK)."
+            ai_context:
+              synonyms: ["ship mode", "shipping method"]
+          - name: L_COMMENT
+            expression: { dialects: [{ dialect: ANSI_SQL, expression: L_COMMENT }] }
+            description: "Free-text remark about the line."
+
+    # =============================================================
+    # RELATIONSHIPS - the foreign keys TPCH does not declare in Snowflake.
+    # `from` holds the foreign key, `to` holds the key it points at.
+    # Each becomes a (:Join) node and (Column)-[:REFERENCES]->(Column) edges.
+    # =============================================================
+    relationships:
+      # NATION and REGION
+      - name: nation_to_region
+        from: NATION
+        to: REGION
+        from_columns: [N_REGIONKEY]
+        to_columns: [R_REGIONKEY]
+      # Customers and suppliers sit in a nation
+      - name: customer_to_nation
+        from: CUSTOMER
+        to: NATION
+        from_columns: [C_NATIONKEY]
+        to_columns: [N_NATIONKEY]
+      - name: supplier_to_nation
+        from: SUPPLIER
+        to: NATION
+        from_columns: [S_NATIONKEY]
+        to_columns: [N_NATIONKEY]
+      # Which supplier offers which part
+      - name: partsupp_to_part
+        from: PARTSUPP
+        to: PART
+        from_columns: [PS_PARTKEY]
+        to_columns: [P_PARTKEY]
+      - name: partsupp_to_supplier
+        from: PARTSUPP
+        to: SUPPLIER
+        from_columns: [PS_SUPPKEY]
+        to_columns: [S_SUPPKEY]
+      # Sales: customer -> order -> line -> (part, supplier)
+      - name: orders_to_customer
+        from: ORDERS
+        to: CUSTOMER
+        from_columns: [O_CUSTKEY]
+        to_columns: [C_CUSTKEY]
+      - name: lineitem_to_orders
+        from: LINEITEM
+        to: ORDERS
+        from_columns: [L_ORDERKEY]
+        to_columns: [O_ORDERKEY]
+      # Composite foreign key: both columns together identify one PARTSUPP row. Column order matters.
+      - name: lineitem_to_partsupp
+        from: LINEITEM
+        to: PARTSUPP
+        from_columns: [L_PARTKEY, L_SUPPKEY]
+        to_columns: [PS_PARTKEY, PS_SUPPKEY]
+
+    # =============================================================
+    # METRICS - business definitions with one canonical SQL formula each.
+    # Revenue is defined ONCE here so every consumer (and the agent) computes it the same way.
+    # =============================================================
+    metrics:
+      - name: net_revenue
+        description: "Net revenue in USD: line price after discount, before tax. The default meaning of 'revenue' and 'sales'."
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: "SUM(LINEITEM.L_EXTENDEDPRICE * (1 - LINEITEM.L_DISCOUNT))"
+        ai_context:
+          synonyms: ["revenue", "sales", "net sales", "turnover"]
+
+      - name: gross_revenue
+        description: "Gross revenue in USD: line price before any discount or tax."
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: "SUM(LINEITEM.L_EXTENDEDPRICE)"
+        ai_context:
+          synonyms: ["gross sales", "list revenue"]
+
+      - name: charged_revenue
+        description: "Revenue in USD including tax: price after discount plus sales tax. What the customer is invoiced for the goods."
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: "SUM(LINEITEM.L_EXTENDEDPRICE * (1 - LINEITEM.L_DISCOUNT) * (1 + LINEITEM.L_TAX))"
+        ai_context:
+          synonyms: ["invoiced amount", "revenue with tax"]
+
+      - name: total_discount_amount
+        description: "Total discount given in USD: the difference between gross and net revenue."
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: "SUM(LINEITEM.L_EXTENDEDPRICE * LINEITEM.L_DISCOUNT)"
+        ai_context:
+          synonyms: ["discounts given", "discount value"]
+
+      - name: order_count
+        description: "Number of distinct orders."
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: "COUNT(DISTINCT ORDERS.O_ORDERKEY)"
+        ai_context:
+          synonyms: ["number of orders", "orders placed"]
+
+      - name: average_order_value
+        description: "Average net revenue per order in USD."
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: "SUM(LINEITEM.L_EXTENDEDPRICE * (1 - LINEITEM.L_DISCOUNT)) / NULLIF(COUNT(DISTINCT LINEITEM.L_ORDERKEY), 0)"
+        ai_context:
+          synonyms: ["AOV", "average basket", "average order size"]
+
+      - name: units_sold
+        description: "Total quantity of parts sold."
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: "SUM(LINEITEM.L_QUANTITY)"
+        ai_context:
+          synonyms: ["quantity sold", "volume"]
+
+      - name: return_rate
+        description: "Share of line items that were returned (L_RETURNFLAG = 'R')."
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: "SUM(CASE WHEN LINEITEM.L_RETURNFLAG = 'R' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0)"
+        ai_context:
+          synonyms: ["returns rate", "percent returned"]

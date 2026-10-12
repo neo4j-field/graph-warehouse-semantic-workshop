@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "neo4j": {
+      "command": "uvx",
+      "args": [
+        "--env-file",
+        ".env",
+        "neo4j-mcp-server@1.6.0"
+      ],
+      "env": {
+        "NEO4J_MCP_DATABASE": "neo4j",
+        "NEO4J_MCP_TELEMETRY": "false"
+      }
+    }
+  }
+}
